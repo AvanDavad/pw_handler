@@ -165,6 +165,16 @@ class PasswordHandler:
             if (i>=st_row) and (i<end_row):
                 self._print_line(i)
     
+    def _get_first(self, x_list, default=''):
+        if len(x_list)==0:
+            return default
+        return x_list[0]
+    
+    def _get_second(self, x_list, default=''):
+        if len(x_list)<2:
+            return default
+        return x_list[1]
+    
     def _print_line(self, i):
         print('{}:{}'.format(i, self.content_lines[i].decode()))
     
@@ -215,16 +225,6 @@ class PasswordHandler:
     
     def _change_key(self, x0=None, params=None):
         self._get_password()
-    
-    def _get_first(self, x_list, default=''):
-        if len(x_list)==0:
-            return default
-        return x_list[0]
-    
-    def _get_second(self, x_list, default=''):
-        if len(x_list)<2:
-            return default
-        return x_list[1]
 
 if __name__ == '__main__':
     pwh = PasswordHandler(args.input_file)
