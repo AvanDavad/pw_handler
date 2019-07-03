@@ -11,9 +11,7 @@ parser.add_argument('input_file', metavar='/path/to/input/file',
                     help='absolute path to input file')
 args = parser.parse_args()
 
-sys.path.append('/home/avandavad/python/crypto/aes_api')
-from aes_api import Mat4, encrypt, decrypt
-
+from Crypto.Cipher import AES
 
 class PasswordHandler:
     def __init__(self, filename):
@@ -43,7 +41,11 @@ class PasswordHandler:
         x_list = x.split('.')
         x_list = (x_list*16)[:16]
         x_list = [int(c) for c in x_list]
-        self.key = Mat4.from_integers(x_list)
+        prekey = bytes(x_list)
+        obj = AES.new(bytes([int(i%5==0) for i in range(16)]), 
+                      AES.MODE_CBC, 
+                      bytes([0 for _ in range(16)]))
+        self.key = obj.encrypt(prekey)
         
     def _load(self):
         self._read_file()
@@ -153,7 +155,7 @@ class PasswordHandler:
                 self.content = b'\n'.join(self.content_lines)
         except:
             print('something went wrong.. please use only ascii!')
-        
+    
     def _read(self, x0=None, params=None):
         st_row = self._get_first(params)
         st_row = 0 if st_row=='' else int(st_row)
@@ -186,59 +188,30 @@ class PasswordHandler:
         print(pwd)
         
     def _decrypt(self):
-        y_list = self._mat4_list_from_ciphertext()
-        x_list = []
-        for mat4 in y_list:
-            x_list.append(decrypt(mat4, self.key))
-        return self._message_from_mat4_list(x_list, cut0=True)
-    
-    def _mat4_list_from_ciphertext(self):
-        return self._mat4_list_from_int_list_helper(self.ciphertext)
-    
-    def _encrypt(self):
-        x_list = self._mat4_list_from_content()
-        y_list = []
-        for mat4 in x_list:
-            y_list.append(encrypt(mat4, self.key))
-        return self._message_from_mat4_list(y_list, cut0=False)
-    
-    def _mat4_list_from_content(self):
-        cont = self.content + bytes([0 for _ in range(16-len(self.content)%16)])
-        return self._mat4_list_from_int_list_helper(cont)
-    
-    def _mat4_list_from_int_list_helper(self, int_list):
-        n = len(int_list)
-        assert (n%16) == 0
-        mat4_list = []
-        for i in range(n//16):
-            mat4_list.append(
-                Mat4.from_integers(int_list[i*16:(i+1)*16])
-            )
-        return mat4_list
-        
-    def _message_from_mat4_list(self, mat4_list, cut0=True):
-        msg_list = []
-        for mat4 in mat4_list:
-            msg_list.append(self._message_from_mat4(mat4, cut0))
-        return b''.join(msg_list)
-
-    def _message_from_mat4(self, mat4, cut0=True):
-        int_list = []
-        for col in mat4.c_list:
-            for s in col.values:
-                val = int(str(s), base=16)
-                if val>0 or not cut0:
-                    int_list.append(val)
-        return bytes(int_list)
+        if len(self.ciphertext) == 0:
+            return bytes([])
+        iv = bytes(self.ciphertext[:16])
+        y = bytes(self.ciphertext[16:])
+        obj = AES.new(self.key, AES.MODE_CBC, iv)
+        x = obj.decrypt(y)
+        x = x[:x.index(255)]
+        return x
     
     def _clear(self, x0=None, params=None):
         os.system('clear')
     
     def _save(self, x0=None, params=None):
-        cont = self._encrypt()
+        iv, cont = self._encrypt()
         with open(self.filename, 'wb') as f:
-            f.write(cont)
+            f.write(iv+cont)
         print('saved {}'.format(self.filename))
+    
+    def _encrypt(self):
+        iv = bytes([random.randint(0,255) for _ in range(16)])
+        obj = AES.new(self.key, AES.MODE_CBC, iv)
+        rem = (-len(self.content)) % 16
+        self.content = self.content + bytes([255 for _ in range(rem)])
+        return (iv, obj.encrypt(self.content))
     
     def _change_key(self, x0=None, params=None):
         self._get_password()
