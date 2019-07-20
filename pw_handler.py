@@ -50,7 +50,14 @@ class PasswordHandler:
     def _load(self):
         self._read_file()
         self.content = self._decrypt()
+        self._check_content()
         self._refresh_content_lines()
+        
+    def _check_content(self):
+        for b in self.content:
+            if b>128:
+                print('Content is corrupted.')
+                break
     
     def _read_file(self):
         if not os.path.isfile(self.filename):
