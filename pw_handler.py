@@ -211,7 +211,8 @@ class PasswordHandler:
         y = bytes(self.ciphertext[16:])
         obj = AES.new(self.key, AES.MODE_CBC, iv)
         x = obj.decrypt(y)
-        x = x[:x.index(255)]
+        if 255 in x:
+            x = x[:x.index(255)]
         return x
     
     def _clear(self, x0=None, params=None):
